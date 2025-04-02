@@ -180,15 +180,18 @@ class SmsSegment(object):
             self.text = "".join(pdu_txt)
         elif encoding == 'ucs':
             pdu_bin = pdu_bin[(len(pdu_bin)%8):] # drop extra bits
-            pdu_txt = []
+            hex_bytes = []
             for septet in zip(*[iter(pdu_bin)]*8):
-                pdu_txt.append(
-                    hex(int(''.join(septet),2))
-                )
-            pdu_txt.reverse()
-            # after reverse, unpack every two hex numbers according to ucs2 encoding
-            # http://www.columbia.edu/kermit/ucs2.html
-            self.text = "".join(pdu_txt)
+                hex_bytes.append(int(''.join(septet), 2))
+            hex_bytes.reverse()
+            
+            chars = []
+            for i in range(0, len(hex_bytes), 2):
+                if i + 1 < len(hex_bytes):
+                    char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
+                    chars.append(chr(char_code))
+            
+            self.text = "".join(chars)
         else:
             raise ValueError("Unknown encoding: {}".format(encoding))
 
