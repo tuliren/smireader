@@ -3,10 +3,10 @@
 
 import struct
 from datetime import datetime
-from math import ceil
 import argparse
 import logging
 
+# https://en.wikipedia.org/wiki/GSM_03.38#GSM_7-bit_default_alphabet_and_extension_table_of_3GPP_TS_23.038_.2F_GSM_03.38
 gsm = ("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1bÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ`¿abcdefghijklmnopqrstuvwxyzäöñüà")
 
 class SmiFile(object):
@@ -15,7 +15,7 @@ class SmiFile(object):
     SMS_TYPE_RECEIVED = 0; SMS_TYPE_SENT = 3
     SMS_STATUS_READ, SMS_STATUS_UNREAD, SMS_STATUS_SENT, SMS_STATUS_UNSENT = range(4)
 
-    def __init__(self, file):
+    def __init__(self, file, encoding):
         logging.debug("Reading smi/smo file")
         # Detect version based on signature
         self.signature = struct.unpack("ccccc", file.read(5))
@@ -69,7 +69,7 @@ class SmiFile(object):
             logging.debug("Dropped waste byte")
 
         # Read all the segments
-        self.segments = [SmsSegment(file) for _ in range(self.parts_stored)]
+        self.segments = [SmsSegment(file, encoding) for _ in range(self.parts_stored)]
 
 class SmsSegment(object):
     
@@ -77,7 +77,7 @@ class SmsSegment(object):
     SMS_TYPE_SENT, SMS_TYPE_RECEIVED = range(2)
     SMS_VPFT_RELATIVE, SMS_VPFT_ENHACED, SMS_VPFT_ABSOLUTE = range(3)
     
-    def __init__(self, file):
+    def __init__(self, file, encoding='gsm'):
         logging.debug("Reading segment")
         # SMS segment status
         status = struct.unpack("B", file.read(1))[0]
@@ -168,14 +168,57 @@ class SmsSegment(object):
             if byte != b'\xff': # if not padding
                 binary.insert(0, "{:08b}".format(ord(byte)))
         pdu_bin = ''.join(binary)
-        pdu_bin = pdu_bin[(len(pdu_bin)%7):] # drop extra bits
-        pdu_txt = []
-        for septet in zip(*[iter(pdu_bin)]*7):
-            pdu_txt.append(
-                gsm[(int(''.join(septet),2))]
-            )
-        pdu_txt.reverse()
-        self.text = "".join(pdu_txt)
+
+        if encoding == 'gsm':
+            pdu_bin = pdu_bin[(len(pdu_bin)%7):] # drop extra bits
+            pdu_txt = []
+            for septet in zip(*[iter(pdu_bin)]*7):
+                pdu_txt.append(
+                    gsm[(int(''.join(septet),2))]
+                )
+            pdu_txt.reverse()
+            self.text = "".join(pdu_txt)
+        elif encoding == 'ucs':
+            pdu_bin = pdu_bin[(len(pdu_bin)%8):] # drop extra bits
+            hex_bytes = []
+            for septet in zip(*[iter(pdu_bin)]*8):
+                hex_bytes.append(int(''.join(septet), 2))
+            hex_bytes.reverse()
+
+            chars = []
+            i = 0
+
+            # After reverse, unpack every one hex number (if it is smaller than 0x20) or
+            # two hex numbers according to ucs2 encoding: http://www.columbia.edu/kermit/ucs2.html
+            while i < len(hex_bytes):
+                # Check if the current byte is less than 0x20
+                if hex_bytes[i] < 0x20:
+                    # Parse this byte directly as a character
+                    char_code = hex_bytes[i]
+                    if char_code == 0xc:
+                        chars.append("\n")
+                    else:
+                        chars.append(chr(char_code))
+                    i += 1
+                else:
+                    # Parse two bytes together if we have enough bytes left
+                    if i + 1 < len(hex_bytes):
+                        char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
+                        # Skip invalid surrogate code points or replace them
+                        if 0xD800 <= char_code <= 0xDFFF:
+                            # Replace with Unicode replacement character
+                            chars.append(' ')
+                        else:
+                            chars.append(chr(char_code))
+                        i += 2
+                    else:
+                        char_code = hex_bytes[i]
+                        chars.append(chr(char_code))
+                        i += 1
+
+            self.text = "".join(chars)
+        else:
+            raise ValueError("Unknown encoding: {}".format(encoding))
 
 class Address(object):
     def __init__(self, file, smsc=True):
@@ -250,6 +293,11 @@ def main():
         default=0,
         help="Increase verbosity.",
         action='count')
+    parser.add_argument('-e', '--encoding',
+        default="gsm",
+        choices=['gsm', 'ucs'],
+        help="Choose message encoding: gsm, ucs. Default to 'gsm'.",
+        action="store")
     parser.add_argument("file",
         help="File to read (*.smi and *.smo are supported)")
     args = parser.parse_args()
@@ -262,7 +310,7 @@ def main():
         logging.DEBUG,
         ][min(args.verbose, 3)])
 
-    smi_file = SmiFile(open(args.file,mode='rb'))
+    smi_file = SmiFile(open(args.file,mode='rb'), args.encoding)
 
     if args.time or args.detailed:
         if hasattr(smi_file.segments[0], 'timestamp'):
