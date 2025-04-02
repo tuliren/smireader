@@ -8,7 +8,37 @@ Usually these files have `*.smi` (incoming) and `*.smo` (outgoing) extensions.
 
 ## Installation
 
-Script has no external dependencies (besides python >= 3.5), so just copy the file somewhere and run it.
+### From Source
+
+The project requires Python 3.10 or higher.
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/tuliren/smireader.git
+   cd smireader
+   ```
+
+2. Install the package:
+   ```
+   pip install -e .
+   ```
+
+### Development Setup
+
+To install development dependencies:
+
+```
+npm run install:dev
+```
+
+This will install the package in development mode with all required development tools.
+
+## Development
+
+- `npm run lint` - Run all linters
+- `npm run format` - Format code with black, isort, and prettier
+- `npm run test` - Run tests
+- `npm run start` - Run the application
 
 ## Usage
 
