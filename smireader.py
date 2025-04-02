@@ -186,15 +186,33 @@ class SmsSegment(object):
             hex_bytes.reverse()
 
             chars = []
-            for i in range(0, len(hex_bytes), 2):
-                if i + 1 < len(hex_bytes):
-                    char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
-                    # skip invalid surrogate code points or replace them
-                    if 0xD800 <= char_code <= 0xDFFF:
-                        # replace with Unicode replacement character
-                        chars.append('\uFFFD')
+            i = 6
+
+            while i < len(hex_bytes):
+                # Check if the current byte is less than 0x20
+                if hex_bytes[i] < 0x20:
+                    # Parse this byte directly as a character
+                    char_code = hex_bytes[i]
+                    if char_code == 0xc:
+                        chars.append("\n")
                     else:
                         chars.append(chr(char_code))
+                    i += 1
+                else:
+                    # Parse two bytes together if we have enough bytes left
+                    if i + 1 < len(hex_bytes):
+                        char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
+                        # Skip invalid surrogate code points or replace them
+                        if 0xD800 <= char_code <= 0xDFFF:
+                            # Replace with Unicode replacement character
+                            chars.append(' ')
+                        else:
+                            chars.append(chr(char_code))
+                        i += 2
+                    else:
+                        char_code = hex_bytes[i]
+                        chars.append(chr(char_code))
+                        i += 1
 
             self.text = "".join(chars)
         else:
