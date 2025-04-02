@@ -13,7 +13,7 @@ Script has no external dependencies (besides python >= 3.5), so just copy the fi
 ## Usage
 
 ```
-usage: smireader.py [-h] [-d] [-m] [-n] [-t] [-v] file
+usage: smireader.py [-h] [-d] [-m] [-n] [-t] [-v] [-e gsm|ucs] file
 
 Read data from Siemens SMI and SMO files.
 
@@ -27,7 +27,7 @@ optional arguments:
   -n, --number    Show message sender/receiver number.
   -t, --time      Show message date and time.
   -v, --verbose   Increase verbosity.
-  -e, --encoding  Set encoding for message text. Choices: gsm, usc-2. (default: gsm)
+  -e, --encoding  Set encoding for message text. Choices: gsm, ucs. (default: gsm)
 ```
 
 ### Library usage
