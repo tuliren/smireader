@@ -184,13 +184,18 @@ class SmsSegment(object):
             for septet in zip(*[iter(pdu_bin)]*8):
                 hex_bytes.append(int(''.join(septet), 2))
             hex_bytes.reverse()
-            
+
             chars = []
             for i in range(0, len(hex_bytes), 2):
                 if i + 1 < len(hex_bytes):
                     char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
-                    chars.append(chr(char_code))
-            
+                    # skip invalid surrogate code points or replace them
+                    if 0xD800 <= char_code <= 0xDFFF:
+                        # replace with Unicode replacement character
+                        chars.append('\uFFFD')
+                    else:
+                        chars.append(chr(char_code))
+
             self.text = "".join(chars)
         else:
             raise ValueError("Unknown encoding: {}".format(encoding))
