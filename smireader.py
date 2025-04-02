@@ -188,6 +188,8 @@ class SmsSegment(object):
             chars = []
             i = 6
 
+            # After reverse, unpack every one hex number (if it is smaller than 0x20) or two
+            # hex numbers according to ucs2 encoding: http://www.columbia.edu/kermit/ucs2.html
             while i < len(hex_bytes):
                 # Check if the current byte is less than 0x20
                 if hex_bytes[i] < 0x20:
