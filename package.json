@@ -9,10 +9,8 @@
     "lint:black": "python -m black .",
     "lint:isort": "python -m isort .",
     "lint:flake8": "python -m flake8 .",
-    "format": "npm run format:black && npm run format:isort && npm run format:prettier",
-    "format:black": "python -m black .",
-    "format:isort": "python -m isort .",
-    "format:prettier": "prettier --write \"**/*.{json,md,yaml,yml}\"",
+    "format:write": "prettier --write \"**/*.{json,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{json,yaml,yml}\"",
     "test": "python -m pytest",
     "test:coverage": "python -m pytest --cov=smireader smireader/__tests__/",
     "install:dev": "pip install -e \".[dev]\""
