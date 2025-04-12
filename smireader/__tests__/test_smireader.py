@@ -2,7 +2,7 @@ import io
 
 import pytest
 
-from smireader.smireader import Address, SmiFile, Timestamp
+from smireader.smireader import Address, Timestamp
 
 
 def test_address_initialization():
