@@ -197,33 +197,23 @@ class SmsSegment(object):
             chars = []
             i = 0
 
-            # After reverse, unpack every one hex number (if it is smaller than 0x20) or
-            # two hex numbers according to ucs2 encoding: http://www.columbia.edu/kermit/ucs2.html
             while i < len(hex_bytes):
-                # Check if the current byte is less than 0x20
-                if hex_bytes[i] < 0x20:
-                    # Parse this byte directly as a character
-                    char_code = hex_bytes[i]
-                    if char_code == 0xC:
-                        chars.append("\n")
+                if i + 1 < len(hex_bytes):
+                    char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
+                    # Skip invalid surrogate code points or replace them
+                    if 0xD800 <= char_code <= 0xDFFF:
+                        logging.warning("Surrogate pair character encountered in UCS-2: 0x%04X", char_code)
+                        chars.append('?') # Using '?' as placeholder
                     else:
-                        chars.append(chr(char_code))
-                    i += 1
-                else:
-                    # Parse two bytes together if we have enough bytes left
-                    if i + 1 < len(hex_bytes):
-                        char_code = (hex_bytes[i] << 8) | hex_bytes[i + 1]
-                        # Skip invalid surrogate code points or replace them
-                        if 0xD800 <= char_code <= 0xDFFF:
-                            # Replace with Unicode replacement character
-                            chars.append(' ')
-                        else:
+                        try:
                             chars.append(chr(char_code))
-                        i += 2
-                    else:
-                        char_code = hex_bytes[i]
-                        chars.append(chr(char_code))
-                        i += 1
+                        except ValueError:
+                            logging.warning("Invalid UCS-2 character code: 0x%04X", char_code)
+                            chars.append('?') # Using '?' as placeholder
+                    i += 2
+                else:
+                    logging.warning("Odd number of bytes found for UCS-2 decoding at end of segment.")
+                    i += 1
 
             self.text = "".join(chars)
         else:
