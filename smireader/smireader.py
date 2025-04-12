@@ -192,9 +192,11 @@ class SmsSegment(object):
             hex_bytes = []
             for septet in zip(*[iter(pdu_bin)] * 8):
                 hex_bytes.append(int(''.join(septet), 2))
+            hex_bytes.reverse()
+
             chars = []
             i = 0
-            hex_bytes = hex_bytes[::-1]
+
             while i < len(hex_bytes):
                 if i + 1 < len(hex_bytes):
                     char_code = (hex_bytes[i] << 8) | hex_bytes[i+1]
